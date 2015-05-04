@@ -1,0 +1,12 @@
+etc
+build
+bin
+doc
+out
+target
+project/project
+logs
+var
+.idea*
+*.iml
+.DS_Store
