@@ -3,14 +3,18 @@ package com.tritondigital.counters
 import java.util.concurrent.atomic.AtomicInteger
 
 import _root_.akka.actor.ActorSystem
+import org.scalatest.concurrent.Eventually
 import org.scalatest.matchers.Matcher
+import org.scalatest.time.{Millis, Seconds, Span}
 import org.scalatest.{Matchers, WordSpec}
 
 import scala.collection.immutable.Queue
 import scala.concurrent.duration._
 import scala.concurrent.{Future, Promise}
 
-class MetricsPublicationCoordinatorTest extends WordSpec with Matchers with CustomMatchers {
+class MetricsPublicationCoordinatorTest extends WordSpec with Matchers with CustomMatchers with Eventually {
+  implicit override val patienceConfig =
+    PatienceConfig(timeout = scaled(Span(4, Seconds)), interval = scaled(Span(100, Millis)))
 
   "The metrics publication coordinator" should {
     "not accept invalid dependencies" in {
@@ -28,8 +32,10 @@ class MetricsPublicationCoordinatorTest extends WordSpec with Matchers with Cust
       // Act
       sut.startPublicationRound()
 
-      fastPublisher should eventuallyVerify( haveMadePublished(Metric("test", 1)) )
-      slowPublisher should eventuallyVerify( haveMadePublished(Metric("test", 1)) )
+      eventually {
+        fastPublisher should haveMadePublished(Metric("test", 1))
+        slowPublisher should haveMadePublished(Metric("test", 1))
+      }
     }
     "ignore publication requests if busy" in withSut() { (sut, fastPublisher, slowPublisher) =>
       sut.startPublicationRound()
@@ -37,35 +43,47 @@ class MetricsPublicationCoordinatorTest extends WordSpec with Matchers with Cust
       // Act
       sut.startPublicationRound() // Should be ignored
 
-      fastPublisher should eventuallyVerify( haveMadePublished(Metric("test", 1)) )
+      eventually {
+        fastPublisher should haveMadePublished(Metric("test", 1))
+      }
     }
     "continue publishing once not busy anymore" in withSut() { (sut, fastPublisher, slowPublisher) =>
       sut.startPublicationRound()
-      fastPublisher should eventuallyVerify( haveMadePublished(Metric("test", 1)) )
-      slowPublisher should eventuallyVerify( haveMadePublished(Metric("test", 1)) )
 
-      // Act
+      eventually {
+        fastPublisher should haveMadePublished(Metric("test", 1))
+        slowPublisher should haveMadePublished(Metric("test", 1))
+      }
+
       sut.startPublicationRound()
 
-      fastPublisher should eventuallyVerify( haveMadePublished(Metric("test", 1), Metric("test", 2)) )
-      slowPublisher should eventuallyVerify( haveMadePublished(Metric("test", 1), Metric("test", 2)) )
+      eventually {
+        fastPublisher should haveMadePublished(Metric("test", 1), Metric("test", 2))
+        slowPublisher should haveMadePublished(Metric("test", 1), Metric("test", 2))
+      }
     }
     "continue publishing in availables publishers and skip busy ones" in withSut() { (sut, fastPublisher, slowPublisher) =>
       sut.startPublicationRound()
 
-      fastPublisher should eventuallyVerify( haveMadePublished(Metric("test", 1)) )
+      eventually {
+        fastPublisher should haveMadePublished(Metric("test", 1))
+      }
+
       sut.startPublicationRound()
 
-      // Act
-      fastPublisher should eventuallyVerify( haveMadePublished(Metric("test", 1), Metric("test", 2)) )
-      slowPublisher should eventuallyVerify( haveMadePublished(Metric("test", 1)) )
+      eventually {
+        fastPublisher should haveMadePublished(Metric("test", 1), Metric("test", 2))
+        slowPublisher should haveMadePublished(Metric("test", 1))
+      }
     }
     "pause publishers" in withSut() { (sut, fastPublisher, slowPublisher) =>
       // Act
       sut.pause()
 
-      fastPublisher should eventuallyVerify( bePaused )
-      slowPublisher should eventuallyVerify( bePaused )
+      eventually {
+        fastPublisher should bePaused
+        slowPublisher should bePaused
+      }
     }
   }
 

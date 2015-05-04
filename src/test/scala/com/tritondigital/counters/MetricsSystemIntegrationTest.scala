@@ -5,15 +5,20 @@ import java.net.ServerSocket
 
 import com.codahale.metrics.{Gauge, MetricRegistry}
 import com.tritondigital.counters.codahale.CodahaleMetricsProvider
+import com.tritondigital.counters.datadog.FakeDatadogServer
 import com.typesafe.config.ConfigFactory
 import org.scalatest.WordSpec
+import org.scalatest.concurrent.Eventually
 import org.scalatest.matchers.{HavePropertyMatchResult, HavePropertyMatcher, MatchResult, Matcher}
 import org.slf4j.LoggerFactory
 
 import scala.concurrent.Future
+import scala.concurrent.duration._
+import scala.language.postfixOps
 
-class MetricsSystemIntegrationTest extends WordSpec with CustomMatchers {
-  val logger = LoggerFactory.getLogger(getClass)
+class MetricsSystemIntegrationTest extends WordSpec with CustomMatchers with Eventually {
+
+  private val logger = LoggerFactory.getLogger(getClass)
 
   "the metrics system" should {
     "publish various metrics" in withSut { (metrics, datadogServer) =>
@@ -23,16 +28,19 @@ class MetricsSystemIntegrationTest extends WordSpec with CustomMatchers {
       logger.error("", new IOException)
       logger.warn("", new NullPointerException)
 
-      datadogServer should eventuallyVerify( havePublishedMessages(
+      eventually(timeout(4 seconds), interval(100 milliseconds)) {
+        datadogServer should havePublishedMessages(
           "aggregated.count:6|g|#agg:true," + expectedDatadogSharedTags,
           "codahale.gauge:11|g|#" + expectedDatadogSharedTags,
           "log.error.count:2|g|#exception:java.io.IOException,inner:none," + expectedDatadogSharedTags,
           "log.warn.count:1|g|#exception:java.lang.NullPointerException,inner:none," + expectedDatadogSharedTags,
           "m1:5|g|#" + expectedDatadogSharedTags
         )
-      )
-      datadogServer should eventuallyVerify( havePublishedMessageLike("""java.heap.usage:\d+\|g\|#""" + expectedDatadogSharedTags))
-      datadogServer should eventuallyVerify( havePublishedMessageLike("""java.cpu.load:\d+.\d+(E-\d+)?\|g\|#""" + expectedDatadogSharedTags))
+
+        datadogServer should havePublishedMessageLike("""java.heap.usage:\d+\|g\|#""" + expectedDatadogSharedTags)
+
+        datadogServer should havePublishedMessageLike("""java.cpu.load:\d+.\d+(E-\d+)?\|g\|#""" + expectedDatadogSharedTags)
+      }
     }
   }
 

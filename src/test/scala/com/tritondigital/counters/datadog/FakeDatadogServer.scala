@@ -1,4 +1,4 @@
-package com.tritondigital.counters
+package com.tritondigital.counters.datadog
 
 import java.net.InetSocketAddress
 import java.util.concurrent.TimeUnit
@@ -9,6 +9,7 @@ import _root_.akka.io.Udp._
 import _root_.akka.io.{IO, Udp}
 import _root_.akka.pattern._
 import _root_.akka.util.{ByteString, Timeout}
+import com.tritondigital.counters.{ServerStatus, Logging, Server}
 
 import scala.concurrent.{Await, Promise}
 import scala.util.Success
