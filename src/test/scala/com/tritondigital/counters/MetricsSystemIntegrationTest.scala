@@ -8,6 +8,7 @@ import com.tritondigital.counters.codahale.CodahaleMetricsProvider
 import com.tritondigital.counters.datadog.FakeDatadogServer
 import com.typesafe.config.ConfigFactory
 import org.scalatest.WordSpec
+import org.scalatest._
 import org.scalatest.concurrent.Eventually
 import org.scalatest.matchers.{HavePropertyMatchResult, HavePropertyMatcher, MatchResult, Matcher}
 import org.slf4j.LoggerFactory
@@ -16,6 +17,7 @@ import scala.concurrent.Future
 import scala.concurrent.duration._
 import scala.language.postfixOps
 
+@Ignore
 class MetricsSystemIntegrationTest extends WordSpec with CustomMatchers with Eventually {
 
   private val logger = LoggerFactory.getLogger(getClass)
