@@ -8,7 +8,7 @@ import java.util.List;
 public class JavaExampleUsage {
     public static void main(String[] args) {
         ActorSystem system = ActorSystem.create();
-        Metrics metrics = new MetricsSystemBuilder(system)
+        Metrics metrics = new MetricsBuilder(system)
             .addGlobalTag("my-app-tag-name", "my-app-tag-value")
             .withDatadogFilter(new DatadogMetricsFilter())
             .build();

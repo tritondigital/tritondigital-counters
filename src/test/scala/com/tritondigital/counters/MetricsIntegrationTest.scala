@@ -8,7 +8,6 @@ import com.tritondigital.counters.codahale.CodahaleMetricsProvider
 import com.tritondigital.counters.datadog.FakeDatadogServer
 import com.typesafe.config.ConfigFactory
 import org.scalatest.WordSpec
-import org.scalatest._
 import org.scalatest.concurrent.Eventually
 import org.scalatest.matchers.{HavePropertyMatchResult, HavePropertyMatcher, MatchResult, Matcher}
 import org.slf4j.LoggerFactory
@@ -17,31 +16,32 @@ import scala.concurrent.Future
 import scala.concurrent.duration._
 import scala.language.postfixOps
 
-@Ignore
-class MetricsSystemIntegrationTest extends WordSpec with CustomMatchers with Eventually {
+class MetricsIntegrationTest extends WordSpec with CustomMatchers with Eventually {
 
   private val logger = LoggerFactory.getLogger(getClass)
 
   "the metrics system" should {
     "publish various metrics" in withSut { (metrics, datadogServer) =>
-      val expectedDatadogSharedTags = "g:gv"
+      val tags = "g:gv"
       metrics.incrementCounter("aggregated.count", 6, Tag("agg", "true"))
       logger.error("", new IOException)
       logger.error("", new IOException)
       logger.warn("", new NullPointerException)
 
+      println("Waiting...")
+
       eventually(timeout(4 seconds), interval(100 milliseconds)) {
         datadogServer should havePublishedMessages(
-          "aggregated.count:6|g|#agg:true," + expectedDatadogSharedTags,
-          "codahale.gauge:11|g|#" + expectedDatadogSharedTags,
-          "log.error.count:2|g|#exception:java.io.IOException,inner:none," + expectedDatadogSharedTags,
-          "log.warn.count:1|g|#exception:java.lang.NullPointerException,inner:none," + expectedDatadogSharedTags,
-          "m1:5|g|#" + expectedDatadogSharedTags
+          "aggregated.count:6|g|#agg:true," + tags,
+          "codahale.gauge:11|g|#" + tags,
+          "log.error.count:2|g|#exception:java.io.IOException,inner:none," + tags,
+          "log.warn.count:1|g|#exception:java.lang.NullPointerException,inner:none," + tags,
+          "m1:5|g|#" + tags
         )
 
-        datadogServer should havePublishedMessageLike("""java.heap.usage:\d+\|g\|#""" + expectedDatadogSharedTags)
+        datadogServer should havePublishedMessageLike("""java.heap.usage:\d+\|g\|#""" + tags)
 
-        datadogServer should havePublishedMessageLike("""java.cpu.load:\d+.\d+(E-\d+)?\|g\|#""" + expectedDatadogSharedTags)
+        datadogServer should havePublishedMessageLike("""java.cpu.load:\d+.\d+(E-\d+)?\|g\|#""" + tags)
       }
     }
   }
@@ -54,7 +54,7 @@ class MetricsSystemIntegrationTest extends WordSpec with CustomMatchers with Eve
     val config = ConfigFactory
       .parseString(
         s"""
-           |tritondigital_counters.port = $port
+           |tritondigital_counters.datadog.port = $port
            |tritondigital_counters.publish_interval = 2 seconds
         """.stripMargin)
       .withFallback(ConfigFactory.load())
@@ -66,7 +66,7 @@ class MetricsSystemIntegrationTest extends WordSpec with CustomMatchers with Eve
         override def getValue = 11
       })
 
-      val metrics = new MetricsSystemBuilder(system)
+      val metrics = new MetricsBuilder(system)
         .publishToDatadog()
         .publishToLogback()
         .monitorLogback()
@@ -75,6 +75,7 @@ class MetricsSystemIntegrationTest extends WordSpec with CustomMatchers with Eve
         .addGlobalTag("g", "gv")
         .build
 
+      println("Starting tests")
       testCode(metrics, datadogServer)
     }
   }

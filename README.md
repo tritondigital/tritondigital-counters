@@ -17,10 +17,10 @@
   - [Built-in metrics](#built-in-metrics)
     - [JMX basic metrics](#jmx-basic-metrics)
     - [Monitoring Logback](#monitoring-logback)
+    - [Monitoring Akka actors](#monitoring-akka-actors)
   - [Appending global tags to all metrics](#appending-global-tags-to-all-metrics)
   - [Providing custom gauges at publication time](#providing-custom-gauges-at-publication-time)
   - [Publishing Codahale Metrics](#publishing-codahale-metrics)
-  - [Monitoring Akka actors](#monitoring-akka-actors)
 
 <!-- END doctoc generated TOC please keep comment here to allow auto update -->
 
@@ -105,7 +105,7 @@ _In Java:_
 
 ```java
     ActorSystem actorSystem = ActorSystem.create();
-    Metrics metrics = new MetricsSystemBuilder(actorSystem)
+    Metrics metrics = new MetricsBuilder(actorSystem)
         .publishToDatadog()
         .build();
 ```
@@ -114,7 +114,7 @@ _In Scala:_
 
 ```scala
     val actorSystem = ActorSystem()
-    val metrics = new MetricsSystemBuilder(actorSystem)
+    val metrics = new MetricsBuilder(actorSystem)
         .publishToDatadog
         .build
 ```
@@ -128,7 +128,7 @@ tritondigital-counters is using the [typesafe config](https://github.com/typesaf
 For activating the publication to datadog:
 
 ```java
-    Metrics metrics = new MetricsSystemBuilder(actorSystem)
+    Metrics metrics = new MetricsBuilder(actorSystem)
         .publishToDatadog()
         .build();
 ```
@@ -166,7 +166,7 @@ _In Java:_
 
     ...
 
-    Metrics metrics = new MetricsSystemBuilder(actorSystem)
+    Metrics metrics = new MetricsBuilder(actorSystem)
         .publishToDatadog()
         .withDatadogFilter(new MyDGFilter())
         .build();
@@ -185,7 +185,7 @@ _In Scala:_
 
     ...
 
-    Metrics metrics = new MetricsSystemBuilder(actorSystem)
+    Metrics metrics = new MetricsBuilder(actorSystem)
         .publishToDatadog()
         .withDatadogFilter(new MyDGFilter())
         .build();
@@ -194,7 +194,7 @@ _In Scala:_
 If all you need to do is have a white list of metrics to send, a filter is readily useable:
 
 ```java
-    Metrics metrics = new MetricsSystemBuilder(actorSystem)
+    Metrics metrics = new MetricsBuilder(actorSystem)
         .publishToDatadog()
         .withDatadogFilter(new MetricPrefixFilter(new String[]{ "log.", "my-app." }))
         .build();
@@ -205,7 +205,7 @@ If all you need to do is have a white list of metrics to send, a filter is readi
 For debugging or in the tests, it can be usefull to publish the metrics value in your application log:
 
 ```java
-    Metrics metrics = new MetricsSystemBuilder(actorSystem)
+    Metrics metrics = new MetricsBuilder(actorSystem)
         .publishToLogback()
         .build();
 ```
@@ -293,7 +293,7 @@ Out of the box, some metrics are published.
 If you want tritondigital-counters to monitor your logs, you can activate it by:
 
 ```java
-    Metrics metrics = new MetricsSystemBuilder(actorSystem)
+    Metrics metrics = new MetricsBuilder(actorSystem)
         .monitorLogback()
         .build();
 ```
@@ -303,48 +303,8 @@ This will yield the following metrics:
 * ``log.error.count`` and ``log.error.m1``: errors logged in Logback. 2 tags are given: `exception` which is the exception class anem that have been logged (if any) and `inner` which is the inner exception class name of that exception (if any). 
 * ``log.warn.count`` and ``log.warn.m1``: warnings logged in Logback. 2 tags are given: `exception` which is the exception class anem that have been logged (if any) and `inner` which is the inner exception class name of that exception (if any). 
 
-## Appending global tags to all metrics
 
-```java
-    Metrics metrics = new MetricsSystemBuilder(actorSystem)
-        .addGlobalTag("my-app-tag-name", "my-app-tag-value")
-        .build();
-```
-
-## Providing custom gauges at publication time
-
-Sometimes, you have access to gauges at all time, and all you need is to "plug" those values at publication time. You can achieve that by implimenting a custom metrics provider:
- 
-```java
-    import com.tritondigital.counters.MetricsProvider
-    import scala.concurrent.Future
-
-    public class MyCustomProvider implements MetricsProvider {
-      public Future<Metric[]> provide() {
-        // Return your metrics here
-      }
-    }
-
-    ...
-
-    Metrics metrics = new MetricsSystemBuilder(actorSystem)
-        .addProvider(new MyCustomProvider())
-        .build();
-```
-
-## Publishing Codahale Metrics
-
-A provider exists for Codahale Metrics registry. You don't need a registry yourself (this is redundant with the com.tritondigital.counters.Metrics), but if an other library is providing one, you can make tritondigital-counters publish this library's metrics:
-
-```java
-
-    MetricRegistry registry = ...; // Get the Codahale's registry
-    Metrics metrics = new MetricsSystemBuilder(actorSystem)
-        .addProvider(new CodahaleMetricsProvider(actorSystem, registry))
-        .build();
-```
-
-## Monitoring Akka actors
+### Monitoring Akka actors
 
 You can monitor your Akka actors. For that, a utility wrapping the receive method is provided.
 
@@ -378,3 +338,50 @@ _In Scala:_
       } 
     }
 ```
+
+This will yield the following metrics:
+
+* ``akka.actor.message`` (timer with .count, .m1, .median, .p75, and .p99): number of message processed, and time to process them. 2 tags:  `path`, for the actor path, and `mclass` for the message class name. 
+
+## Appending global tags to all metrics
+
+```java
+    Metrics metrics = new MetricsBuilder(actorSystem)
+        .addGlobalTag("my-app-tag-name", "my-app-tag-value")
+        .build();
+```
+
+## Providing custom gauges at publication time
+
+Sometimes, you have access to gauges at all time, and all you need is to "plug" those values at publication time. You can achieve that by implimenting a custom metrics provider:
+ 
+```java
+    import com.tritondigital.counters.MetricsProvider
+    import scala.concurrent.Future
+
+    public class MyCustomProvider implements MetricsProvider {
+      public Future<Metric[]> provide() {
+        // Return your metrics here
+      }
+    }
+
+    ...
+
+    Metrics metrics = new MetricsBuilder(actorSystem)
+        .addProvider(new MyCustomProvider())
+        .build();
+```
+
+## Publishing Codahale Metrics
+
+A provider exists for Codahale Metrics registry. You don't need a registry yourself (this is redundant with the com.tritondigital.counters.Metrics), but if an other library is providing one, you can make tritondigital-counters publish this library's metrics:
+
+```java
+
+    MetricRegistry registry = ...; // Get the Codahale's registry
+    Metrics metrics = new MetricsBuilder(actorSystem)
+        .addProvider(new CodahaleMetricsProvider(actorSystem, registry))
+        .build();
+```
+
+The rules for converting gauges, counters, meters, histograms, and timers to gauges for publication also apply for Codahale Metrics.
