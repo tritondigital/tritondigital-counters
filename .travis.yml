@@ -1,4 +1,12 @@
 language: scala
 scala:
-   - 2.10.4
-   - 2.11.2
+- 2.10.4
+- 2.11.2
+
+after_success:
+- '[[ $TRAVIS_BRANCH == "master" ]] && { sbt publish; };'
+
+env:
+  global:
+  - secure: HVx5Vh01z1KtTTLExTkougxpIbNdvgcLen1B4Tv5XoyQKzgqzQTjvWANwrR0t9TwC2PFbo/2f7CzMy4FKXE5IeswXQgtIR1s3VHzw8iLPUF9vXcgsPGM8kThaMxkpuJCk9bxTnxYn3UFKM4ptFjZ9mInfg1KjXvjT+230yROxos=
+  - secure: K61QCYH74fqRpLAjGYxF+0910gq4oB9bW2+UOku5OVBzqEPLTizsnlvdqyscR+9ErhJTqGyvuqGKi7APlAOQkVDgRT5TEWa0IaD3U8BaGFDhvG3q9lunpuy8ybQ/MYw+1ZVu+RUajF1QZ2Y1EwpTGRnX2+/AlaFv/ixE7+6KOoU=

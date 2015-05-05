@@ -23,13 +23,16 @@
   - [Publishing Codahale Metrics](#publishing-codahale-metrics)
 
 <!-- END doctoc generated TOC please keep comment here to allow auto update -->
+# Build Information and status
+
+[![Build Status](https://travis-ci.org/tritondigital/tritondigital-counters.png?branch=master)](https://travis-ci.org/tritondigital/tritondigital-counters)
 
 # Triton Digital Counters
 
 tritondigital-counters allows applications to publish metrics in monitoring systems as easy as logging, from Scala, Java, or any JVM language, with minimal overhead.
- 
+
 Currently, the library supports the following integrations:
- 
+
 * Datadog
 * Logback
 * Docker
@@ -46,7 +49,7 @@ tritondigital-counters supports publication to the following back-ends:
 * Logback logs
 
 tritondigital-counters can monitor the following part of your application out of the box:
- 
+
 * application lifecycle (start / stop)
 * Logback ERROR and WARNING log entries
 * Akka actors
@@ -67,14 +70,14 @@ tritondigital-counters adds the notion of tags, inherited from the OpenTSDB or D
 
 ## Behaviour
 
-During normal conditions, tritondigital-counters will publish a snapshot of the metrics every publication interval (15 seconds by default). 
+During normal conditions, tritondigital-counters will publish a snapshot of the metrics every publication interval (15 seconds by default).
 
-The internal aggregation of metrics is based on Codahale Metrics, so it is fast. Although the metrics are published every few seconds, your application can update them thousends of time per seconds. 
+The internal aggregation of metrics is based on Codahale Metrics, so it is fast. Although the metrics are published every few seconds, your application can update them thousends of time per seconds.
 
 tritondigital-counters tries to be a good citizen. It is publishing metrics that have stable values less often (10 mins instead of the regular publication interval). This makes monitoring a lot of stable metrics not an issue.
 
 When the remote timeseries database is not responding, it will drop the current metrics publication round, and tries to reconnect after the next publication interval.
- 
+
 If for whatever reason, publication takes longer than the interval between publication, some publication rounds will be skipped. This is making tritondigital-counters to peaks where a lot of metrics need to be published.
 
 Publication time is jittered, so as to avoid resonance phenomena that could harm the target timeseries database.
@@ -92,7 +95,7 @@ _For Maven:_
         <version>1.0.0</version>
     </dependency>
 ```
-    
+
 _For SBT:_
 
 ```scala
@@ -121,7 +124,7 @@ _In Scala:_
 
 ## Configuration
 
-tritondigital-counters is using the [typesafe config](https://github.com/typesafehub/config). You can look at the documentation and default config values in src/main/resources/reference.conf. 
+tritondigital-counters is using the [typesafe config](https://github.com/typesafehub/config). You can look at the documentation and default config values in src/main/resources/reference.conf.
 
 ## Publishing to Datadog
 
@@ -217,26 +220,26 @@ You can now publish various kind of metrics:
 ```java
     // Counters
     metrics.incrementCounter("some.metric.without.tags");
-    
+
     // Meters
     metrics.markMeter("some.meter");
-    
+
     // Histograms
     metrics.updateHistogram("some.histogram", 88);
-    
+
     // Timers
     metrics.updateTimer("some.timer", 67, TimeUnit.MILLIS);
-    
+
     // Gauges
     metrics.setGaugeValue("some.gauge", 1.45);
-    
+
     // All methods support contextual tags
     metrics.incrementCounter("some.metric.with.tags", new Tag("custom-tag-1", "value"), new Tag("custom-tag-2", "value"));
     metrics.incrementCounter("some.metric.with.tags", 10, new Tag("custom-tag-1", "value"), new Tag("custom-tag-2", "value"));
 ```
 
 That being said, timeseries databases only support gauges. So tritondigital-counters is creating gauges out of those high level metrics. Here are the gauges actually published by tritondigital-counters:
- 
+
 ``Gauges``
 
 The gauges are published as is.
@@ -300,8 +303,8 @@ If you want tritondigital-counters to monitor your logs, you can activate it by:
 
 This will yield the following metrics:
 
-* ``log.error.count`` and ``log.error.m1``: errors logged in Logback. 2 tags are given: `exception` which is the exception class anem that have been logged (if any) and `inner` which is the inner exception class name of that exception (if any). 
-* ``log.warn.count`` and ``log.warn.m1``: warnings logged in Logback. 2 tags are given: `exception` which is the exception class anem that have been logged (if any) and `inner` which is the inner exception class name of that exception (if any). 
+* ``log.error.count`` and ``log.error.m1``: errors logged in Logback. 2 tags are given: `exception` which is the exception class anem that have been logged (if any) and `inner` which is the inner exception class name of that exception (if any).
+* ``log.warn.count`` and ``log.warn.m1``: warnings logged in Logback. 2 tags are given: `exception` which is the exception class anem that have been logged (if any) and `inner` which is the inner exception class name of that exception (if any).
 
 
 ### Monitoring Akka actors
@@ -313,7 +316,7 @@ _In Java:_
 ```java
     import com.tritondigital.counters.Metrics;
     import com.tritondigital.counters.akka.ActorWithMetrics;
-    
+
     public class MyActor extends ActorWithMetrics {
         public MyActor(Metrics metrics) {
             super(metrics);
@@ -330,18 +333,18 @@ _In Scala:_
 ```scala
     import com.tritondigital.counters.Metrics
     import com.tritondigital.counters.akka.ActorMetrics
-    
+
     class MyActor(val metrics: Metrics) extends Actor with ActorMetrics {
       def wrappedReceive = {
         case message =>
           // Your logic that you used to place in receive {}
-      } 
+      }
     }
 ```
 
 This will yield the following metrics:
 
-* ``akka.actor.message`` (timer with .count, .m1, .median, .p75, and .p99): number of message processed, and time to process them. 2 tags:  `path`, for the actor path, and `mclass` for the message class name. 
+* ``akka.actor.message`` (timer with .count, .m1, .median, .p75, and .p99): number of message processed, and time to process them. 2 tags:  `path`, for the actor path, and `mclass` for the message class name.
 
 ## Appending global tags to all metrics
 
@@ -354,7 +357,7 @@ This will yield the following metrics:
 ## Providing custom gauges at publication time
 
 Sometimes, you have access to gauges at all time, and all you need is to "plug" those values at publication time. You can achieve that by implimenting a custom metrics provider:
- 
+
 ```java
     import com.tritondigital.counters.MetricsProvider
     import scala.concurrent.Future
