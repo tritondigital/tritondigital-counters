@@ -14,6 +14,4 @@ object LogPublisher extends MetricsPublisher with Logging {
     log.info(s"Current metrics values: $eol" + metrics.mkString(eol)) // Publish all those metrics to the log
     completedFuture
   }
-
-  def pause() {}
 }

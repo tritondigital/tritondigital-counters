@@ -21,7 +21,7 @@ class DatadogPublisherTest extends PublisherTest[FakeDatadogServer, DatadogPubli
       sut.publish(Metric6)
 
       eventually {
-        server should havePublished(Metric6Msg)
+        server should havePublishedExactly(Metric6Msg)
       }
     }
     "ignore publications too close to each other" in withSut() { (server, sut) =>
@@ -29,41 +29,41 @@ class DatadogPublisherTest extends PublisherTest[FakeDatadogServer, DatadogPubli
       sut.publish(Metric7) // This one should be ignored
 
       eventually {
-        server should havePublished(Metric6Msg)
+        server should havePublishedExactly(Metric6Msg)
       }
     }
     "add common tags" in withSut(List(Tag("tag", "test"))) { (server, sut) =>
       sut.publish(Metric6)
 
       eventually {
-        server should havePublished(Metric6Msg + "|#tag:test")
+        server should havePublishedExactly(Metric6Msg + "|#tag:test")
       }
     }
     "ignore host tag" in withSut(List(Tag("host", "test"))) { (server, sut) =>
       sut.publish(Metric6)
 
       eventually {
-        server should havePublished(Metric6Msg)
+        server should havePublishedExactly(Metric6Msg)
       }
     }
     "continue to publish metrics after yet another interval" in withSut() { (server, sut) =>
       sut.publish(Metric6)
 
       eventually {
-        server should havePublished(Metric6Msg)
+        server should havePublishedExactly(Metric6Msg)
       }
       
       sut.publish(Metric7)
 
       eventually {
-        server should havePublished(Metric6Msg, Metric7Msg)
+        server should havePublishedExactly(Metric6Msg, Metric7Msg)
       }
     }
     "restarts when Datadog reports an error" in withSut() { (server, sut) =>
       sut.publish(Metric6)
 
       eventually {
-        server should havePublished(Metric6Msg)
+        server should havePublishedExactly(Metric6Msg)
       }
 
       server.reportErrors()
@@ -79,7 +79,7 @@ class DatadogPublisherTest extends PublisherTest[FakeDatadogServer, DatadogPubli
       sut.publish(Metric8)
 
       eventually {
-        server should havePublished(Metric6Msg, Metric8Msg)
+        server should havePublishedExactly(Metric6Msg, Metric8Msg)
       }
     }
     "connect once server becomes available" in withSut() { (server, sut) =>
@@ -96,20 +96,7 @@ class DatadogPublisherTest extends PublisherTest[FakeDatadogServer, DatadogPubli
       sut.publish(Metric8) // This one should pass
 
       eventually {
-        server should havePublished(Metric8Msg) // We only have the one sent when successfully reconnecting
-      }
-    }
-    "be able to pause" in withSut() { (server, sut) =>
-      sut.publish(Metric6) // This one publication should fail, since we will cut the connection right after.
-
-      sut.pause()
-
-      Thread.sleep(1000)
-
-      sut.publish(Metric7)
-
-      eventually {
-        server should havePublished(Metric7Msg)
+        server should havePublishedExactly(Metric8Msg) // We only have the one sent when successfully reconnecting
       }
     }
   }

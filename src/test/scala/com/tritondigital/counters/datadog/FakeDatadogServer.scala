@@ -106,7 +106,7 @@ class FakeDatadogServer(port: Int)(implicit system: ActorSystem) extends Logging
     }
 
     private def reply() {
-      replyto.map(_ ! "ok")
+      replyto.foreach(_ ! "ok")
       replyto = None
     }
   }

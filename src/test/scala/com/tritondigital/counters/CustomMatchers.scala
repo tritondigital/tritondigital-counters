@@ -19,7 +19,7 @@ trait CustomMatchers extends Matchers {
 
   }
 
-  def havePublished(msgs: String*): Matcher[Server] =
+  def havePublishedExactly(msgs: String*): Matcher[Server] =
     be(msgs) compose(server => server.serverStatus.receivedMsgs)
 
   def haveRefused(msgs: String*): Matcher[Server] =
