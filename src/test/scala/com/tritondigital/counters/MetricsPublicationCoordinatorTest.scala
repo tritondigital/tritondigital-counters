@@ -76,15 +76,6 @@ class MetricsPublicationCoordinatorTest extends WordSpec with Matchers with Cust
         slowPublisher should haveMadePublished(Metric("test", 1))
       }
     }
-    "pause publishers" in withSut() { (sut, fastPublisher, slowPublisher) =>
-      // Act
-      sut.pause()
-
-      eventually {
-        fastPublisher should bePaused
-        slowPublisher should bePaused
-      }
-    }
   }
 
   private def withSut(filter: ScalaMetricFilter = FilterNoMetric)(test: (MetricsPublicationCoordinator, RecordingPublisher, SlowPublisher) => Unit) {
@@ -95,10 +86,6 @@ class MetricsPublicationCoordinatorTest extends WordSpec with Matchers with Cust
 
       test(new MetricsPublicationCoordinator(system, List(provider), List(fastPublisher, slowPublisher), filter), fastPublisher, slowPublisher)
     }
-  }
-
-  val bePaused: Matcher[RecordingPublisher] = be(1) compose { publisher =>
-    publisher.pauses.size
   }
 
   def haveMadePublished(metrics: Metric*): Matcher[RecordingPublisher] = be(metrics.map(assertable)) compose { publisher =>
@@ -126,10 +113,6 @@ class MetricsPublicationCoordinatorTest extends WordSpec with Matchers with Cust
 
   trait RecordingPublisher extends MetricsPublisher {
     var published = Queue.empty[Metric]
-    var pauses = Queue.empty[Unit]
-
-    /** Allows to close expensive resources when publication is halted for the time being. Those will need to be lazily re-opened next time publish is called. **/
-    def pause() = pauses = pauses.enqueue(())
   }
 
   class FastPublisher extends RecordingPublisher {

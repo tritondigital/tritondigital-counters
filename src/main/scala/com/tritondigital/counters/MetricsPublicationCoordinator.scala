@@ -46,10 +46,6 @@ class MetricsPublicationCoordinator(system: ActorSystem,
       log.warn(s"Ignoring publication round, since metrics provider are still busy.")
     }
   }
-
-  def pause() {
-    publishers.foreach(_.pause())
-  }
 }
 
 case class PublisherTask(publisher: MetricsPublisher, task: Future[Unit] = Future.successful(())) extends Logging {

@@ -45,14 +45,6 @@ class DatadogPublisher(system: ActorSystem, metricsSystem: Metrics, commonTags: 
     (ensureConnection ? Publish(metrics)).mapTo[Unit]
   }
 
-  def pause() {
-    this.synchronized {
-      // Kill the connection
-      datadogConnection.foreach(_ ! PoisonPill)
-      datadogConnection = None
-    }
-  }
-
   private [this] def ensureConnection = {
     this.synchronized {
       if (datadogConnection.isEmpty) {
