@@ -41,6 +41,10 @@ publishTo := {
     Some("releases" at nexus + "service/local/staging/deploy/maven2")
 }
 
+ScoverageSbtPlugin.ScoverageKeys.coverageMinimum := 85
+
+ScoverageSbtPlugin.ScoverageKeys.coverageFailOnMinimum := true
+
 publishArtifact in Test := false
 
 credentials += Credentials("Sonatype Nexus Repository Manager","oss.sonatype.org",System.getenv("SONATYPE_USERNAME"),System.getenv("SONATYPE_PASSWORD"))

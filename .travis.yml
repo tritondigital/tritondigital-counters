@@ -1,11 +1,11 @@
 language: scala
 scala:
-- 2.10.4
-- 2.11.2
-
+- 2.10.5
+- 2.11.6
+script:
+- sbt coverage test
 after_success:
 - '[[ $TRAVIS_BRANCH == "master" ]] && { sbt publish; };'
-
 env:
   global:
   - secure: HVx5Vh01z1KtTTLExTkougxpIbNdvgcLen1B4Tv5XoyQKzgqzQTjvWANwrR0t9TwC2PFbo/2f7CzMy4FKXE5IeswXQgtIR1s3VHzw8iLPUF9vXcgsPGM8kThaMxkpuJCk9bxTnxYn3UFKM4ptFjZ9mInfg1KjXvjT+230yROxos=
