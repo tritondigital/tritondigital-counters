@@ -1,6 +1,6 @@
-name := "triton-counters"
+name := "tritondigital-counters"
 
-version := "1.0.0"
+version := "1.0.0-SNAPSHOT"
 
 organization := "com.tritondigital"
 
@@ -31,6 +31,8 @@ libraryDependencies ++= Seq(
 
 publishMavenStyle := true
 
+sonatypeProfileName := "com.tritondigital"
+
 publishTo := {
   val nexus = "https://oss.sonatype.org/"
   if (isSnapshot.value)
@@ -39,7 +41,13 @@ publishTo := {
     Some("releases" at nexus + "service/local/staging/deploy/maven2")
 }
 
+ScoverageSbtPlugin.ScoverageKeys.coverageMinimum := 85
+
+ScoverageSbtPlugin.ScoverageKeys.coverageFailOnMinimum := true
+
 publishArtifact in Test := false
+
+credentials += Credentials("Sonatype Nexus Repository Manager","oss.sonatype.org",System.getenv("SONATYPE_USERNAME"),System.getenv("SONATYPE_PASSWORD"))
 
 pomIncludeRepository := { _ => false }
 
