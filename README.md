@@ -25,7 +25,7 @@
 <!-- END doctoc generated TOC please keep comment here to allow auto update -->
 # Build Information and status
 
-[![Build Status](https://travis-ci.org/tritondigital/tritondigital-counters.png?branch=master)](https://travis-ci.org/tritondigital/tritondigital-counters)
+[![Build Status](https://travis-ci.org/tritondigital/tritondigital-counters.png?branch=master)](https://travis-ci.org/tritondigital/tritondigital-counters) [![Coverage Status](https://coveralls.io/repos/tritondigital/tritondigital-counters/badge.svg?branch=master)](https://coveralls.io/r/tritondigital/tritondigital-counters?branch=master)
 
 # Triton Digital Counters
 
