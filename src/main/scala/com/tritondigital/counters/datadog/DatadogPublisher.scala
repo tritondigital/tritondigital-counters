@@ -40,6 +40,7 @@ class DatadogPublisher(system: ActorSystem, metricsSystem: Metrics, commonTags: 
   private case class Publish(metrics: Iterable[Metric])
   private case class Ack(remaining: Iterable[Metric], count: Int, timeoutHandler: Cancellable) extends Event
   private case class SuspiciousConnection(replyTo: ActorRef) // When OS is taking a bit too much time to ack one write. Better restart the connection.
+  private case object CleanupQuarantineFinished
 
   def publish(metrics: Iterable[Metric]) = {
     (ensureConnection ? Publish(metrics)).mapTo[Unit]
@@ -72,37 +73,37 @@ class DatadogPublisher(system: ActorSystem, metricsSystem: Metrics, commonTags: 
         context become waitForConnection(metrics, sender())
 
       case other =>
-        errorManagement()(other)
+        errorManagement("sleeping")(other)
     }
 
     def waitForConnection(toPublish: Iterable[Metric], replyTo: ActorRef): Receive = {
       case _: Publish =>
-        log.warn("Busy connecting. Ignoring publication request.")
+        log.warn("[wait for connection] Busy connecting. Ignoring publication request.")
 
       case _: Connected =>
-        startSending(registerConnection, toPublish, replyTo)
+        startSending("wait for connection", registerConnection, toPublish, replyTo)
 
       case other =>
-        errorManagement()(other)
+        errorManagement("wait for connection")(other)
     }
 
     def connected(socket: ActorRef): Receive = {
       case Publish(metrics) =>
-        startSending(socket, metrics, sender())
+        startSending("connected", socket, metrics, sender())
 
       case other =>
-        errorManagement(Some(socket))(other)
+        errorManagement("connected", Some(socket))(other)
     }
 
     def sending(socket: ActorRef, replyTo: ActorRef): Receive = {
       case _: Publish =>
-        log.warn("Busy writing to socket. Ignoring publication request.")
+        log.warn("[sending] Busy writing to socket. Ignoring publication request.")
 
       case Ack(remaining, count, timeoutHandler) =>
         timeoutHandler.cancel()
 
         if (remaining.isEmpty) {
-          if (log.isDebugEnabled) log.debug(s"Published $count metrics.")
+          if (log.isDebugEnabled) log.debug(s"[sending] Published $count metrics.")
           context become connected(socket)
 
           metricsSystem.setGaugeValue("datadog.timeseries.count", publishedKeys.size)
@@ -114,32 +115,47 @@ class DatadogPublisher(system: ActorSystem, metricsSystem: Metrics, commonTags: 
         }
 
       case other =>
-        errorManagement(Some(socket))(other)
+        errorManagement("sending", Some(socket))(other)
     }
 
-    def errorManagement(socket: Option[ActorRef] = None): Receive = {
+    def cleaningConnection(timeoutHandler: Cancellable): Receive = {
+      case Disconnected =>
+        timeoutHandler.cancel()
+        log.debug("[cleaning connection] Received proper disconnection.")
+        context become sleeping
+
+      case CleanupQuarantineFinished =>
+        log.warn("[cleaning connection] Received no disconnection after 200ms. Restarting process from scratch.")
+        context become sleeping
+    }
+
+    def errorManagement(stateName: String, socket: Option[ActorRef] = None): Receive = {
+      case _: Connected =>
+        log.warn(s"[$stateName] Received an unexpected connection confirmation. Ignoring it.")
+        () // Ignore
+
       case CommandFailed(_: Connect) =>
         metricsSystem.markMeter("datadog.failed_connection")
-        giveUp(s"Connection to Datadog agent failed. Are you sure '${address.getHostName}' is resolving to the right host? In particular, if you are on Mac, 'localhost' is sometimes resolving on a IPv6 address. If you are still experiencing issues, you can hard code the desired IP in the tritondigital_counters.datadog.host configuration property.")
+        giveUp(s"[$stateName] Connection to Datadog agent failed. Are you sure '${address.getHostName}' is resolving to the right host? In particular, if you are on Mac, 'localhost' is sometimes resolving on a IPv6 address. If you are still experiencing issues, you can hard code the desired IP in the tritondigital_counters.datadog.host configuration property.")
 
       case CommandFailed(Send(payload, _)) =>
-        throw new Exception(s"Received OS overflow for ${payload.utf8String}. Not supposed to since we are waiting for a ACK before sending next metrics.")
+        throw new Exception(s"[$stateName] Received OS overflow for ${payload.utf8String}. Not supposed to since we are waiting for a ACK before sending next metrics.")
 
       case Received(payload) =>
         // Datadog agent is replying only to signal errors
         socket.foreach(_ ! Disconnect)
-        giveUp(s"Datadog agent reported an error: ${payload.utf8String}. Restarting connection.")
+        giveUp(s"[$stateName] Datadog agent reported an error: ${payload.utf8String}. Restarting connection.")
 
       case PoisonPill =>
-        log.debug("Datadog agent connection is being killed.")
+        log.debug(s"[$stateName] Datadog agent connection is being killed.")
         socket.foreach(_ ! Disconnect)
 
       case SuspiciousConnection(replyTo) =>
         replyTo ! (())
-        giveUp(s"Datadog connection seem to hang.")
+        giveUp(s"[$stateName] Datadog connection seem to hang.")
 
       case Disconnected =>
-        giveUp(s"Datadog agent connection has been closed.")
+        giveUp(s"[$stateName] Datadog agent connection has been closed.")
     }
 
     private def initiateConnection() {
@@ -149,13 +165,13 @@ class DatadogPublisher(system: ActorSystem, metricsSystem: Metrics, commonTags: 
 
     private def registerConnection = {
       val socket = sender()
-      log.info("Successfully connected to Datadog agent.")
+      log.info("[wait for connection] Successfully connected to Datadog agent.")
       metricsSystem.markMeter("datadog.connection")
       socket
     }
 
-    private def startSending(socket: ActorRef, metrics: Iterable[Metric], replyTo: ActorRef) {
-      log.debug("Publishing metrics to Datadog.")
+    private def startSending(stateName: String, socket: ActorRef, metrics: Iterable[Metric], replyTo: ActorRef) {
+      log.debug(s"[$stateName] Publishing metrics to Datadog.")
       metricsSystem.markMeter("datadog.publication")
 
       val deduplicated = filter.filter(metrics)
@@ -170,17 +186,20 @@ class DatadogPublisher(system: ActorSystem, metricsSystem: Metrics, commonTags: 
       publishedKeys += metric.key
       Send(
         metric.copy(tags = metric.tags ++ commonTagsToSend).toDatadogBytes,
-        Ack(metrics.tail, count + 1, buildTimeoutHandler(replyTo))
+        Ack(metrics.tail, count + 1, buildSendAckTimeout(replyTo))
       )
     }
 
-    private def buildTimeoutHandler(replyTo: ActorRef) =
+    private def buildSendAckTimeout(replyTo: ActorRef) =
       system.scheduler.scheduleOnce(500 millis, self, SuspiciousConnection(replyTo))
+
+    private def buildConnectionCleanupTimeout =
+      system.scheduler.scheduleOnce(200 millis, self, CleanupQuarantineFinished)
 
     private def giveUp(msg: String): Unit = {
       log.warn(msg)
 
       // Restart the process
-      context become sleeping
+      context become cleaningConnection(buildConnectionCleanupTimeout)
     }
   }}

@@ -8,7 +8,7 @@ import org.scalatest.time.{Millis, Seconds, Span}
 import scala.concurrent.Await
 import scala.concurrent.duration._
 
-class DatadogPublisherTest extends PublisherTest[FakeDatadogServer, DatadogPublisher] with Eventually {
+class DatadogPublisherTest extends PublisherTest[FakeDatadogServer, DatadogPublisher] with Eventually with Logging {
   implicit override val patienceConfig =
     PatienceConfig(timeout = scaled(Span(4, Seconds)), interval = scaled(Span(100, Millis)))
 
@@ -76,6 +76,8 @@ class DatadogPublisherTest extends PublisherTest[FakeDatadogServer, DatadogPubli
 
       server.reportNoErrors()
 
+      Thread.sleep(250) // Timeout before reseting the connection
+
       sut.publish(Metric8)
 
       eventually {
@@ -92,6 +94,8 @@ class DatadogPublisherTest extends PublisherTest[FakeDatadogServer, DatadogPubli
       server.startAcceptingConnections()
 
       Await.result(sut.publish(Metric7), 1.second) // This one should fail, due to the socket being in a weird state, but should detect it and reset the connection
+
+      Thread.sleep(250) // Timeout before reseting the connection
 
       sut.publish(Metric8) // This one should pass
 
