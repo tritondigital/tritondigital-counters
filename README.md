@@ -92,14 +92,14 @@ _For Maven:_
     <dependency>
         <groupId>com.tritondigital</groupId>
         <artifactId>tritondigital-counters_2.10</artifactId>
-        <version>1.0.0</version>
+        <version>1.0.1</version>
     </dependency>
 ```
 
 _For SBT:_
 
 ```scala
-    libraryDependencies += "com.tritondigital" %% "tritondigital-counters" % "1.0.0"
+    libraryDependencies += "com.tritondigital" %% "tritondigital-counters" % "1.0.1"
 ```
 
 You can then start the monitoring process. tritondigital-counters is using akka-io for fast, efficient, and non blocking IO, so you will need to pass it an actor system:
