@@ -188,10 +188,10 @@ _In Scala:_
 
     ...
 
-    Metrics metrics = new MetricsBuilder(actorSystem)
+    val metrics = new MetricsBuilder(actorSystem)
         .publishToDatadog()
         .withDatadogFilter(new MyDGFilter())
-        .build();
+        .build()
 ```
 
 If all you need to do is have a white list of metrics to send, a filter is readily useable:
