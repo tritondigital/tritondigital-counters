@@ -43,6 +43,20 @@ class ActorMetricsTest(_system: ActorSystem) extends TestKit(_system) with WordS
         UpdateTimerCall("akka.actor.message", 1, Seq(Tag("path", "/user/scala-actor"), Tag("mclass", "String")))
       )
     }
+    "publish actor message processing latencies when actor is named with special characters" in {
+      val metrics = new RecordingMetrics
+      val sut = system.actorOf(Props(new ScalaActor(metrics)), "@scala;-=actor+")
+
+      sut ! MessageValue
+
+      expectMsg(MessageValue)
+
+      Thread.sleep(200)
+
+      metrics.updateTimerCalls shouldBe Seq(
+        UpdateTimerCall("akka.actor.message", 1, Seq(Tag("path", "/user/scala-actor"), Tag("mclass", "String")))
+      )
+    }
   }
 
   class JavaActor(metrics: Metrics) extends ActorWithMetrics(metrics) {

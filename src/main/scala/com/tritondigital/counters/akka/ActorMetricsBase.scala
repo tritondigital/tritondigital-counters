@@ -1,7 +1,7 @@
 package com.tritondigital.counters.akka
 
 import akka.actor.Actor
-import com.tritondigital.counters.{Metrics, Tag}
+import com.tritondigital.counters.{Metric, Metrics, Tag}
 
 trait ActorMetricsBase extends Actor {
   protected def metrics: Metrics
@@ -20,7 +20,7 @@ trait ActorMetricsBase extends Actor {
         else
           message.getClass.getSimpleName
 
-      metrics.updateTimer("akka.actor.message", start, Tag("path", path), Tag("mclass", msgClass))
+      metrics.updateTimer("akka.actor.message", start, Tag("path", Metric.clean(path)), Tag("mclass", Metric.clean(msgClass)))
     }
   }
 }
