@@ -56,26 +56,6 @@ class SimpleMetrics(actorSystem: ActorSystem) extends Metrics with MetricsProvid
     actor ! UpdateHistogram(MetricKey(name, tags), value)
   }
 
-  def sumQuery(name: String, tagKeyCombination: String*): Future[java.util.Map[java.util.List[Tag], java.lang.Double]] = {
-    def tagCombinationForMetric(metric: Metric): Seq[Tag] =
-      for {
-        tagKey <- tagKeyCombination
-        tag <- metric.tags.find(_.key == tagKey)
-      } yield tag
-
-    provide map { metrics =>
-      metrics
-        .filter(m => m.name == name && tagKeyCombination.forall(key => m.tags.exists(_.key == key)))
-        .groupBy(tagCombinationForMetric)
-        .map { case (combination, metrics) =>
-          val sum = new java.lang.Double(metrics.map(_.value.toDouble).sum)
-          combination.asJava -> sum
-        }
-        .toMap
-        .asJava
-    }
-  }
-
   def provide =
     Patterns
       .ask(actor, GetMetrics, 60.second)

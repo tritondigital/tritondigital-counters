@@ -27,6 +27,4 @@ public interface Metrics {
     void markMeter(String name, long times, Tag... tags);
     /** Updates the given histogram with a new value **/
     void updateHistogram(String name, long value, Tag... tags);
-    /** Returns for each distinct combination the sum of _local_ (not server's) values for the given metric **/
-    Future<Map<List<Tag>, Double>> sumQuery(String name, String... tagKeyCombination);
 }
