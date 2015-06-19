@@ -94,19 +94,6 @@ class SimpleMetricsTest extends WordSpec with BeforeAndAfter with CustomMatchers
         ("metric2.p99", Seq(Tag("t", "t1")), DoubleValue(9))
       )
     }
-    "sum tag combinations" in withSut { sut =>
-      sut.incrementCounter("metric1", Tag("t", "t1"), Tag("g", "g1"))
-      sut.incrementCounter("metric1", Tag("t", "t2"), Tag("g", "g1"))
-      sut.incrementCounter("metric1", Tag("t", "t1"), Tag("g", "g1"))
-      sut.incrementCounter("metric1", Tag("t", "t1"), Tag("g", "g2"))
-      sut.incrementCounter("metric1", Tag("f", "f1"))
-
-      sumCombination(sut, "metric1", "t", "g") shouldEqual List(
-        Seq(Tag("t", "t1"), Tag("g", "g1")) -> 2.0,
-        Seq(Tag("t", "t1"), Tag("g", "g2")) -> 1.0,
-        Seq(Tag("t", "t2"), Tag("g", "g1")) -> 1.0
-      )
-    }
   }
 
   private def provide(sut: SimpleMetrics) =
@@ -115,14 +102,6 @@ class SimpleMetricsTest extends WordSpec with BeforeAndAfter with CustomMatchers
       .toIndexedSeq
       .sortBy(m => (m.name, m.tags(0).key, m.tags(0).value))
       .map(m => (m.name, m.tags, m.value))
-
-  private def sumCombination(sut: SimpleMetrics, name: String, combination: String*) =
-    Await
-      .result(sut.sumQuery(name, combination: _*), 1.seconds)
-      .asScala // Transform java Map in Scala Map
-      .toIndexedSeq // Which allows to switch to a sortable collection
-      .map { case (combi, sum) => (combi.asScala.toIterable, sum) } // transform the list of tags in a friendly assertable and sortable collection
-      .sortBy(_._1) // Sort it by the combinations
 
   private def withSut(test: SimpleMetrics => Unit) {
     usingActorSystem() { system =>
