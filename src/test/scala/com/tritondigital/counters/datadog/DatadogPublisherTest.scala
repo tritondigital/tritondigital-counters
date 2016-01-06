@@ -1,6 +1,6 @@
 package com.tritondigital.counters.datadog
 
-import _root_.akka.actor.ActorSystem
+import _root_.akka.actor.{Cancellable, ActorSystem}
 import com.tritondigital.counters._
 import org.scalatest.concurrent.Eventually
 import org.scalatest.time.{Millis, Seconds, Span}
@@ -101,6 +101,43 @@ class DatadogPublisherTest extends PublisherTest[FakeDatadogServer, DatadogPubli
 
       eventually {
         server should havePublishedExactly(Metric8Msg) // We only have the one sent when successfully reconnecting
+      }
+    }
+    "discard any ACK in sleeping state" in withSut() { (server, sut) =>
+      sut.ensureConnection ! sut.Ack(
+        Metric6,
+        1,
+        new Cancellable {
+          override def isCancelled: Boolean = true
+          override def cancel(): Boolean = true
+        }
+      )
+
+      sut.publish(Metric6)
+      eventually {
+        server should havePublishedExactly(Metric6Msg)
+      }
+    }
+    "discard any ACK in waitForConnection state" in withSut() { (server, sut) =>
+      server.stopAcceptingConnections()
+      sut.publish(Metric6)
+      // send right away a Ack while the sut has transitioned to waitForConnection
+      sut.ensureConnection ! sut.Ack(
+        Metric6,
+        1,
+        new Cancellable {
+          override def isCancelled: Boolean = true
+          override def cancel(): Boolean = true
+        }
+      )
+      Thread.sleep(1000) // Wait enough time so that publication has been attempted once and failed due to connection failure
+      server.startAcceptingConnections()
+      Await.result(sut.publish(Metric7), 1.second) // This one should fail, due to the socket being in a weird state, but should detect it and reset the connection
+      Thread.sleep(250) // Timeout before reseting the connection
+      sut.publish(Metric8) // This one should pass
+
+      eventually {
+        server should havePublishedExactly(Metric8Msg)
       }
     }
   }

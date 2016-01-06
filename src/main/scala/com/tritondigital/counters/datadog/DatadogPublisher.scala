@@ -37,16 +37,16 @@ class DatadogPublisher(system: ActorSystem, metricsSystem: Metrics, commonTags: 
   private [this] val commonTagsToSend =
     commonTags.filter(_.key != "host") // host is added naturally by Datadog, this is unnecessary
 
-  private case class Publish(metrics: Iterable[Metric])
-  private case class Ack(remaining: Iterable[Metric], count: Int, timeoutHandler: Cancellable) extends Event
-  private case class SuspiciousConnection(replyTo: ActorRef) // When OS is taking a bit too much time to ack one write. Better restart the connection.
-  private case object CleanupQuarantineFinished
+  private [datadog] case class Publish(metrics: Iterable[Metric])
+  private [datadog] case class Ack(remaining: Iterable[Metric], count: Int, timeoutHandler: Cancellable) extends Event
+  private [datadog] case class SuspiciousConnection(replyTo: ActorRef) // When OS is taking a bit too much time to ack one write. Better restart the connection.
+  private [datadog] case object CleanupQuarantineFinished
 
   def publish(metrics: Iterable[Metric]) = {
     (ensureConnection ? Publish(metrics)).mapTo[Unit]
   }
 
-  private [this] def ensureConnection = {
+  private [datadog] def ensureConnection = {
     this.synchronized {
       if (datadogConnection.isEmpty) {
         datadogConnection = Some(system.actorOf(Props(new DatadogConnection), s"datadog-connection-$connectionIteration"))
@@ -57,7 +57,7 @@ class DatadogPublisher(system: ActorSystem, metricsSystem: Metrics, commonTags: 
   }
 
   /** Handles non reliable connection to Datadog agent **/
-  private [this] class DatadogConnection extends Actor {
+  private [datadog] class DatadogConnection extends Actor {
     import context.dispatcher
 
     private [this] var publishedKeys = Set.empty[MetricKey]
@@ -72,6 +72,9 @@ class DatadogPublisher(system: ActorSystem, metricsSystem: Metrics, commonTags: 
         initiateConnection() // Wait an actual publication request to initiate a connection
         context become waitForConnection(metrics, sender())
 
+      case Ack(_, _, timeoutHandler) =>
+        timeoutHandler.cancel()
+
       case other =>
         errorManagement("sleeping")(other)
     }
@@ -79,6 +82,9 @@ class DatadogPublisher(system: ActorSystem, metricsSystem: Metrics, commonTags: 
     def waitForConnection(toPublish: Iterable[Metric], replyTo: ActorRef): Receive = {
       case _: Publish =>
         log.warn("[wait for connection] Busy connecting. Ignoring publication request.")
+
+      case Ack(_, _, timeoutHandler) =>
+        timeoutHandler.cancel()
 
       case _: Connected =>
         startSending("wait for connection", registerConnection, toPublish, replyTo)
