@@ -1,6 +1,6 @@
 name := "tritondigital-counters"
 
-version := "1.0.2-SNAPSHOT"
+version := "1.0.2"
 
 organization := "com.tritondigital"
 
