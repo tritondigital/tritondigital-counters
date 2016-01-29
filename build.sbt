@@ -47,7 +47,7 @@ ScoverageSbtPlugin.ScoverageKeys.coverageFailOnMinimum := true
 
 publishArtifact in Test := false
 
-credentials += Credentials("Sonatype Nexus Repository Manager","oss.sonatype.org",System.getenv("SONATYPE_USERNAME"),System.getenv("SONATYPE_PASSWORD"))
+credentials += Credentials("Nexus Repository Manager","oss.sonatype.org",System.getenv("SONATYPE_USERNAME"),System.getenv("SONATYPE_PASSWORD"))
 
 pomIncludeRepository := { _ => false }
 
