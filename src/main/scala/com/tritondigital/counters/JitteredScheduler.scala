@@ -26,7 +26,13 @@ class JitteredScheduler(system: ActorSystem, action: => Unit) extends Runnable {
       action
     }
     finally {
-      system.scheduler.scheduleOnce(nextInterval, this)
+      try {
+        // Catch execption on shutdown
+        system.scheduler.scheduleOnce(nextInterval, this)
+      } catch {
+        case is:IllegalStateException if is.getMessage == "cannot enqueue after timer shutdown" => // ignore
+        case ex:Throwable => throw ex
+      }
     }
   }
 
